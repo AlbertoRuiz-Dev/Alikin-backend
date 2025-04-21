@@ -40,11 +40,13 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                .anyRequest().authenticated()
+                    .requestMatchers("/api/users/me").permitAll() // Temporalmente hacer público este endpoint
+
+                    .anyRequest().authenticated()
             );
         
         // Agregar nuestro filtro personalizado

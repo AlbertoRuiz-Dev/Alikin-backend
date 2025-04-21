@@ -1,9 +1,6 @@
 package com.backendalikin.entity;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import jakarta.persistence.*;
 import java.util.HashSet;
@@ -11,10 +8,11 @@ import java.util.Set;
 
 @Entity
 @Table(name = "genres")
-@Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
+@Setter
 public class GenreEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

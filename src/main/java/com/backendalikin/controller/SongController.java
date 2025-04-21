@@ -3,6 +3,7 @@ package com.backendalikin.controller;
 import com.backendalikin.dto.request.SongRequest;
 import com.backendalikin.dto.response.SongResponse;
 import com.backendalikin.service.SongService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -30,10 +31,14 @@ public class SongController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<SongResponse> uploadSong(
-            @RequestPart("songData") @Valid SongRequest songRequest,
+            @RequestPart("songData") String songDataJson,
             @RequestPart("audioFile") MultipartFile audioFile,
             @RequestPart(value = "coverImage", required = false) MultipartFile coverImage,
             Authentication authentication) throws IOException {
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        SongRequest songRequest = objectMapper.readValue(songDataJson, SongRequest.class);
+
         String email = ((UserDetails) authentication.getPrincipal()).getUsername();
         Long userId = songService.getUserIdByEmail(email);
         return ResponseEntity.ok(songService.uploadSong(songRequest, audioFile, coverImage, userId));

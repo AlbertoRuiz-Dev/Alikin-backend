@@ -13,7 +13,6 @@ public interface UserMapper {
     @Mapping(target = "followersCount", expression = "java(entity.getFollowers().size())")
     @Mapping(target = "followingCount", expression = "java(entity.getFollowing().size())")
     @Mapping(target = "isFollowing", ignore = true) // Esto se setea en el servicio
-    @Mapping(target = "role", source = "role.name")
     UserResponse toUserResponse(UserEntity entity);
 
     UserBasicResponse toUserBasicResponse(UserEntity entity);

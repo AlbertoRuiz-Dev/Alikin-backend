@@ -1,9 +1,6 @@
 package com.backendalikin.entity;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
@@ -12,7 +9,8 @@ import java.util.Set;
 
 @Entity
 @Table(name = "songs")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
