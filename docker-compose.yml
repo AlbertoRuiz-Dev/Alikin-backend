@@ -12,6 +12,8 @@ services:
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    volumes:
+      - media-volume:/app/upload-dir
     networks:
       - backend
 
@@ -28,8 +30,9 @@ services:
     networks:
       - backend
 
-networks:
-  backend:
-
 volumes:
   postgres_data:
+  media-volume:
+
+networks:
+  backend:

@@ -28,9 +28,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        System.out.println("🔍 shouldNotFilter: " + request.getRequestURI());
+        String path = request.getRequestURI();
+        return path.startsWith("/v3/api-docs") ||
+                path.startsWith("/swagger-ui") ||
+                path.equals("/swagger-ui.html") ||
+                path.equals("/swagger-ui/index.html");
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) 
             throws ServletException, IOException {
-        
         // Obtener el token JWT del encabezado de autorización
         String jwt = getJwtFromRequest(request);
         
