@@ -32,11 +32,11 @@ public class AuthService {
         if (userRepository.existsByEmail(signupRequest.getEmail())) {
             throw new RuntimeException("El email ya está en uso");
         }
-        
+
         if (userRepository.existsByNickname(signupRequest.getNickname())) {
             throw new RuntimeException("El nickname ya está en uso");
         }
-        
+
         // Crear el nuevo usuario
         UserEntity user = new UserEntity();
         user.setName(signupRequest.getName());
@@ -46,37 +46,37 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(signupRequest.getPassword()));
         user.setRole(Role.USER); // Por defecto, el usuario tendrá el rol USER
         user.setEmailVerified(false); // Por defecto, el email no está verificado
-        user.setProfilePictureUrl("default-profile.jpg"); // Imagen de perfil por defecto
-        
+        user.setProfilePictureUrl(null); // Imagen de perfil por defecto
+
         // Guardar el usuario
         userRepository.save(user);
-        
+
         return new MessageResponse("Usuario registrado exitosamente");
     }
 
     public AuthResponse authenticateUser(LoginRequest loginRequest) {
-        // Autenticar al usuario
+        // 🔐 Autenticar usando email o nickname + contraseña
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getUsernameOrEmail(),
                         loginRequest.getPassword()
                 )
         );
-        
-        // Establecer la autenticación en el contexto de seguridad
+
+        // ✔️ Establecer autenticación en el contexto
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        
-        // Obtener los detalles del usuario autenticado
-        org.springframework.security.core.userdetails.UserDetails userDetails = 
+
+        // 🔍 Obtener detalles del usuario autenticado
+        org.springframework.security.core.userdetails.UserDetails userDetails =
                 (org.springframework.security.core.userdetails.UserDetails) authentication.getPrincipal();
-        
-        // Generar el token JWT
+
+        // 🔑 Generar JWT válido
         String jwt = tokenProvider.generateToken(userDetails);
-        
-        // Obtener la entidad de usuario completa
+
+        // 📄 Obtener datos completos del usuario (desde la BDD)
         UserEntity user = userDetailsService.getUserEntityByUsernameOrEmail(loginRequest.getUsernameOrEmail());
-        
-        // Construir y devolver la respuesta
+
+        // 📦 Construir respuesta con token y datos del usuario
         return AuthResponse.builder()
                 .accessToken(jwt)
                 .tokenType("Bearer")

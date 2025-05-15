@@ -17,7 +17,7 @@ import java.util.UUID;
 @Service
 public class FileStorageService {
 
-    @Value("${file.storage.location:upload-dir}")
+    @Value("${file.storage.location:uploads}")
     private String storageLocation;
 
     private Path rootLocation;

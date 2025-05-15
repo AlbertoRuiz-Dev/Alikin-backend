@@ -21,6 +21,6 @@ public class PostResponse {
     private CommunityBasicResponse community;
     private LocalDateTime createdAt;
     private int voteCount;
-    private int userVote; // 1, -1 o 0 según el voto del usuario actual
+    private int userVote; //
     private int commentsCount;
 }

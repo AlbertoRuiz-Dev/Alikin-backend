@@ -47,8 +47,10 @@ public class SecurityConfig {
                                 "/api/auth/signup",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
-                                "/swagger-ui.html"
-                        ).permitAll()
+                                "/swagger-ui.html",
+                                "/api/posts/uploads/**",
+                                "/uploads/**"
+                                ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -58,10 +60,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:4200"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-        config.setAllowCredentials(true);
+        config.addAllowedOriginPattern("*"); // 🔥 Permitir cualquier origen
+        config.setAllowedMethods(List.of("*")); // 🔥 Permitir cualquier método
+        config.setAllowedHeaders(List.of("*")); // 🔥 Permitir cualquier cabecera
+        config.setAllowCredentials(true);       // Permitir cookies/JWT si los hay
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

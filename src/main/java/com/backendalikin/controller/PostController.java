@@ -4,9 +4,11 @@ import com.backendalikin.dto.response.PostResponse;
 import com.backendalikin.service.PostService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -19,6 +21,15 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.UUID;
+
 
 @RestController
 @RequestMapping("/api/posts")
@@ -28,6 +39,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 class PostController {
 
     private final PostService postService;
+    @Value("${app.base-url}")
+    private String baseUrl;
+
 
     @Operation(summary = "Crear publicación", description = "Crea una nueva publicación del usuario autenticado")
     @ApiResponses({
@@ -40,6 +54,57 @@ class PostController {
         String email = ((UserDetails) authentication.getPrincipal()).getUsername();
         Long userId = postService.getUserIdByEmail(email);
         return ResponseEntity.ok(postService.createPost(postRequest, userId));
+    }
+
+    @PostMapping(path = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Crear publicación con imagen", description = "Permite crear una publicación incluyendo imagen")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Publicación creada correctamente", content = @Content(schema = @Schema(implementation = PostResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+            @ApiResponse(responseCode = "401", description = "No autorizado")
+    })
+    public ResponseEntity<PostResponse> createPostWithImage(
+            @RequestPart("content") String content,
+            @RequestPart(value = "songId", required = false) Long songId,
+            @RequestPart(value = "communityId", required = false) Long communityId,
+            @RequestPart(value = "image", required = false) MultipartFile image,
+            Authentication authentication
+    ) {
+        String email = ((UserDetails) authentication.getPrincipal()).getUsername();
+        Long userId = postService.getUserIdByEmail(email);
+
+        PostRequest postRequest = new PostRequest();
+        postRequest.setContent(content);
+        postRequest.setSongId(songId);
+        postRequest.setCommunityId(communityId);
+
+        // Guardar imagen si se sube
+        if (image != null && !image.isEmpty()) {
+            String imageUrl = saveImage(image);
+            postRequest.setImageUrl(imageUrl);
+        }
+
+        PostResponse postResponse = postService.createPost(postRequest, userId);
+        return ResponseEntity.ok(postResponse);
+    }
+
+    private String saveImage(MultipartFile image) {
+        try {
+            String filename = UUID.randomUUID() + "_" + image.getOriginalFilename();
+            Path path = Paths.get("uploads/images", filename);
+
+            System.out.println("📥 Guardando imagen en: " + path.toAbsolutePath());
+
+            Files.createDirectories(path.getParent());
+            Files.copy(image.getInputStream(), path, StandardCopyOption.REPLACE_EXISTING);
+
+            System.out.println("✅ Imagen guardada correctamente");
+
+            return baseUrl + "/uploads/images/" + filename;
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error al guardar la imagen", e);
+        }
     }
 
     @Operation(summary = "Obtener publicación", description = "Devuelve una publicación por su ID")

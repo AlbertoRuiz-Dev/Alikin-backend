@@ -11,17 +11,17 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry
-                .addResourceHandler("/media/**")
-                .addResourceLocations("file:upload-dir/");
+                .addResourceHandler("/uploads/**")
+                .addResourceLocations("file:uploads/");
     }
 
-  //  @Override
-//    public void addCorsMappings(CorsRegistry registry) {
-//        registry
-//                .addMapping("/**")
-//                .allowedOrigins("http://localhost:4200")
-//                .allowedMethods("*")
-//                .allowedHeaders("*")
-//                .allowCredentials(true);
-//    }
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry
+                .addMapping("/**")
+                .allowedOrigins("http://localhost:4200")
+                .allowedMethods("*")
+                .allowedHeaders("*")
+                .allowCredentials(true);
+    }
 }

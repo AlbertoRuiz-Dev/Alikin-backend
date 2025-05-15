@@ -60,7 +60,7 @@ public class SongService {
             String coverImageUrl = fileStorageService.storeFile(coverImage, "covers");
             song.setCoverImageUrl(coverImageUrl);
         } else {
-            song.setCoverImageUrl("default-cover.jpg");
+            song.setCoverImageUrl(null);
         }
 
         // Calcular duración (esto es un ejemplo, en un caso real necesitarías una biblioteca para obtener la duración)
