@@ -12,14 +12,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.MediaType; // Importa MediaType
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile; // Importa MultipartFile
 
-import jakarta.validation.Valid;
-import java.util.List;import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid; // Mantén esta si usas validación en los @RequestParam
+import java.util.List;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -37,20 +40,59 @@ public class CommunityController {
     private final CommunityService communityService;
     private final PostService postService;
 
-    @Operation(summary = "Crear comunidad", description = "Crea una nueva comunidad musical")
+
+    @Operation(summary = "Listar todas las comunidades", description = "Devuelve todas las comunidades existentes")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Comunidad creada correctamente",
+            @ApiResponse(responseCode = "200", description = "Lista de comunidades recuperada correctamente",
+                    content = @Content(schema = @Schema(implementation = CommunityResponse.class))),
+            @ApiResponse(responseCode = "401", description = "No autorizado")
+    })
+    @GetMapping
+    public ResponseEntity<List<CommunityResponse>> getAllCommunities(Authentication authentication) {
+        List<CommunityResponse> communities = communityService.getAllCommunities();
+
+        if (authentication != null) {
+            String email = ((UserDetails) authentication.getPrincipal()).getUsername();
+            Long userId = communityService.getUserIdByEmail(email);
+            communities.forEach(c -> communityService.setMembershipStatus(c, userId));
+        }
+
+        return ResponseEntity.ok(communities);
+    }
+
+
+    @Operation(summary = "Crear comunidad", description = "Crea una nueva comunidad musical, opcionalmente con una imagen.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Comunidad creada correctamente", // Cambiado a 201 Created
                     content = @Content(schema = @Schema(implementation = CommunityResponse.class))),
             @ApiResponse(responseCode = "400", description = "Datos inválidos"),
             @ApiResponse(responseCode = "401", description = "No autorizado")
     })
-    @PostMapping
+    @PostMapping(consumes = { MediaType.MULTIPART_FORM_DATA_VALUE }) // Especifica que consume multipart/form-data
     public ResponseEntity<CommunityResponse> createCommunity(
-            @Valid @RequestBody CommunityRequest communityRequest,
+            @Parameter(description = "Nombre de la comunidad", required = true) @Valid @RequestParam("name") String name,
+            @Parameter(description = "Descripción de la comunidad", required = true) @Valid @RequestParam("description") String description,
+            @Parameter(description = "Archivo de imagen para la comunidad (opcional)") @RequestPart(value = "imageFile", required = false) MultipartFile imageFile,
             Authentication authentication) {
+
+        // Obtener userId del usuario autenticado
         String email = ((UserDetails) authentication.getPrincipal()).getUsername();
         Long userId = communityService.getUserIdByEmail(email);
-        return ResponseEntity.ok(communityService.createCommunity(communityRequest, userId));
+
+        // Crear un objeto CommunityRequest (o pasar los campos directamente al servicio)
+        // Tu DTO CommunityRequest original tenía: name, description, imageUrl (String)
+        // Ahora, imageUrl será manejado por el imageFile.
+        // El servicio decidirá cómo generar y guardar la URL de la imagen.
+        CommunityRequest communityRequestData = new CommunityRequest();
+        communityRequestData.setName(name);
+        communityRequestData.setDescription(description);
+        // communityRequestData.setImageUrl(null); // El servicio establecerá esto después de guardar el archivo
+
+        // El método del servicio ahora debe aceptar el MultipartFile
+        CommunityResponse createdCommunity = communityService.createCommunity(communityRequestData, imageFile, userId);
+
+        // Es común devolver un 201 Created para un POST exitoso que crea un recurso
+        return ResponseEntity.status(201).body(createdCommunity);
     }
 
     @Operation(summary = "Obtener comunidad", description = "Obtiene información detallada de una comunidad")
@@ -73,6 +115,9 @@ public class CommunityController {
         return ResponseEntity.ok(community);
     }
 
+    // ... (El resto de tus métodos @PutMapping, @DeleteMapping, etc., permanecen igual si no manejan archivos) ...
+    // Copio el resto de tus métodos para que el archivo esté completo:
+
     @Operation(summary = "Actualizar comunidad", description = "Actualiza información de una comunidad")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Comunidad actualizada correctamente",
@@ -86,7 +131,7 @@ public class CommunityController {
     @PreAuthorize("@securityService.isCommunityLeader(authentication, #id) or hasRole('ADMIN')")
     public ResponseEntity<CommunityResponse> updateCommunity(
             @PathVariable Long id,
-            @Valid @RequestBody CommunityRequest communityRequest) {
+            @Valid @RequestBody CommunityRequest communityRequest) { // Si la actualización no implica archivos, @RequestBody está bien aquí
         return ResponseEntity.ok(communityService.updateCommunity(id, communityRequest));
     }
 
@@ -141,7 +186,7 @@ public class CommunityController {
     @Operation(summary = "Listar miembros", description = "Obtiene la lista de miembros de una comunidad")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Lista recuperada correctamente",
-                    content = @Content(schema = @Schema(description = "Respuesta con token JWT"))),
+                    content = @Content(schema = @Schema(implementation = UserResponse.class))), // Ajustado para ser más específico
             @ApiResponse(responseCode = "404", description = "Comunidad no encontrada"),
             @ApiResponse(responseCode = "401", description = "No autorizado")
     })
@@ -158,7 +203,7 @@ public class CommunityController {
         Page<PostResponse> posts = postService.getCommunityPosts(id, pageable);
         if (authentication != null) {
             String email = ((UserDetails) authentication.getPrincipal()).getUsername();
-            Long userId = postService.getUserIdByEmail(email);
+            Long userId = postService.getUserIdByEmail(email); // Asumo que este método existe
             postService.setUserVoteStatusForPage(posts, userId);
         }
         return ResponseEntity.ok(posts);
@@ -176,7 +221,7 @@ public class CommunityController {
     @Operation(summary = "Buscar comunidades", description = "Busca comunidades por nombre")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Búsqueda realizada correctamente",
-                    content = @Content(schema = @Schema(description = "Respuesta con token JWT"))),
+                    content = @Content(schema = @Schema(implementation = CommunityResponse.class))), // Ajustado
             @ApiResponse(responseCode = "401", description = "No autorizado")
     })
     @GetMapping("/search")
@@ -194,7 +239,7 @@ public class CommunityController {
     @Operation(summary = "Listar comunidades de usuario", description = "Obtiene las comunidades a las que pertenece un usuario")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Lista recuperada correctamente",
-                    content = @Content(schema = @Schema(description = "Respuesta con token JWT"))),
+                    content = @Content(schema = @Schema(implementation = CommunityResponse.class))), // Ajustado
             @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
             @ApiResponse(responseCode = "401", description = "No autorizado")
     })
@@ -203,7 +248,7 @@ public class CommunityController {
         String email = ((UserDetails) authentication.getPrincipal()).getUsername();
         Long userId = communityService.getUserIdByEmail(email);
         List<CommunityResponse> communities = communityService.getUserCommunities(userId);
-        communities.forEach(community -> community.setMember(true));
+        communities.forEach(community -> community.setMember(true)); // Esto ya se hace en el servicio, pero no hace daño
         return ResponseEntity.ok(communities);
     }
 }

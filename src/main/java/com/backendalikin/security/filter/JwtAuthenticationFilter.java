@@ -34,12 +34,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return path.startsWith("/v3/api-docs") ||
                 path.startsWith("/swagger-ui") ||
                 path.equals("/swagger-ui.html") ||
-                path.equals("/swagger-ui/index.html");
+                path.equals("/swagger-ui/index.html")||
+                path.startsWith("/uploads/"); // 🔥 Añadir esta línea
+
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) 
             throws ServletException, IOException {
+        String path = request.getRequestURI();
+
+        // 🛑 Evitar interceptar imágenes u otros recursos públicos
+        if (path.startsWith("/uploads/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             response.setStatus(HttpServletResponse.SC_OK);
             return;

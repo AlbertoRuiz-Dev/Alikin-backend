@@ -1,9 +1,8 @@
 package com.backendalikin.model;
 
-import com.backendalikin.model.enums.CommunityRole;
+import com.backendalikin.enums.CommunityRole;
 import lombok.*;
 
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.*;
 

@@ -3,12 +3,19 @@ package com.backendalikin.poblate;
 import com.backendalikin.entity.*;
 import com.backendalikin.model.enums.Role;
 import com.backendalikin.repository.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.client.RestTemplate;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.URL;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -24,6 +31,9 @@ public class DataSeederConfig {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final PasswordEncoder passwordEncoder;
+
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Bean
     public CommandLineRunner seedData() {
@@ -107,7 +117,6 @@ public class DataSeederConfig {
 
             songRepository.saveAll(List.of(song1, song2, song3, song4, song5));
 
-
             // Crear comunidades
             CommunityEntity general = new CommunityEntity();
             general.setName("General");
@@ -134,13 +143,14 @@ public class DataSeederConfig {
 
             playlistRepository.saveAll(List.of(lista1, lista2));
 
-            // Crear posts
+            // Crear posts con imágenes aleatorias
             PostEntity post1 = new PostEntity();
             post1.setContent("Me encanta esta canción!");
             post1.setSong(song1);
             post1.setUser(rivas);
             post1.setCreatedAt(LocalDateTime.now());
             post1.setVoteCount(0);
+            post1.setImageUrl(downloadRandomImage("rock", "post1.jpg"));
 
             PostEntity post2 = new PostEntity();
             post2.setContent("¿Alguien más ama el jazz?");
@@ -149,14 +159,15 @@ public class DataSeederConfig {
             post2.setCommunity(general);
             post2.setCreatedAt(LocalDateTime.now());
             post2.setVoteCount(0);
+            post2.setImageUrl(downloadRandomImage("jazz", "post2.jpg"));
 
             PostEntity post3 = new PostEntity();
             post3.setContent("Foto del concierto anoche");
-            post3.setImageUrl("uploads/images/concierto.jpg");
             post3.setUser(alberto);
             post3.setCommunity(musica);
             post3.setCreatedAt(LocalDateTime.now());
             post3.setVoteCount(0);
+            post3.setImageUrl(downloadRandomImage("concert", "post3.jpg"));
 
             PostEntity post4 = new PostEntity();
             post4.setContent("Mi playlist favorita");
@@ -164,6 +175,7 @@ public class DataSeederConfig {
             post4.setUser(ango);
             post4.setCreatedAt(LocalDateTime.now());
             post4.setVoteCount(0);
+            post4.setImageUrl(downloadRandomImage("pop", "post4.jpg"));
 
             PostEntity post5 = new PostEntity();
             post5.setContent("Rockeando la tarde");
@@ -172,6 +184,7 @@ public class DataSeederConfig {
             post5.setCommunity(general);
             post5.setCreatedAt(LocalDateTime.now());
             post5.setVoteCount(0);
+            post5.setImageUrl(downloadRandomImage("rock", "post5.jpg"));
 
             postRepository.saveAll(List.of(post1, post2, post3, post4, post5));
 
@@ -218,5 +231,32 @@ public class DataSeederConfig {
         user.setNickname(nickname);
         user.setProfilePictureUrl("");
         return user;
+    }
+
+    public String downloadRandomImage(String keyword, String filename) {
+        try {
+            String unsplashAccessKey = "SPdJXWnHDsWcZT6V1O2sMB8iAzK8c2Mrfbu5pGgpY5U"; // Reemplaza con tu clave
+            String unsplashUrl = "https://api.unsplash.com/photos/random?query=" + keyword +
+                    "&client_id=" + unsplashAccessKey;
+
+            String jsonResponse = restTemplate.getForObject(unsplashUrl, String.class);
+            Map<String, Object> response = objectMapper.readValue(jsonResponse, Map.class);
+            Map<String, String> urls = (Map<String, String>) response.get("urls");
+            String imageUrl = urls.get("regular");
+
+            String filePath = "/app/uploads/" + filename;
+            URL url = new URL(imageUrl);
+            ReadableByteChannel rbc = Channels.newChannel(url.openStream());
+            FileOutputStream fos = new FileOutputStream(filePath);
+            fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
+            fos.close();
+            rbc.close();
+
+            return "/uploads/" + filename;
+        } catch (Exception e) {
+            System.err.println("Error downloading image for keyword " + keyword + ": " + e.getMessage());
+            return "/uploads/images/default.jpg";
+        }
+
     }
 }

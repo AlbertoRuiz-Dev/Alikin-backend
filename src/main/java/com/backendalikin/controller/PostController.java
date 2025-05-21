@@ -65,8 +65,8 @@ class PostController {
     })
     public ResponseEntity<PostResponse> createPostWithImage(
             @RequestPart("content") String content,
-            @RequestPart(value = "songId", required = false) Long songId,
-            @RequestPart(value = "communityId", required = false) Long communityId,
+            @RequestPart(value = "songId", required = false) String songIdStr,
+            @RequestPart(value = "communityId", required = false) String communityIdStr,
             @RequestPart(value = "image", required = false) MultipartFile image,
             Authentication authentication
     ) {
@@ -75,18 +75,23 @@ class PostController {
 
         PostRequest postRequest = new PostRequest();
         postRequest.setContent(content);
-        postRequest.setSongId(songId);
-        postRequest.setCommunityId(communityId);
 
-        // Guardar imagen si se sube
+        if (songIdStr != null && !songIdStr.isBlank()) {
+            postRequest.setSongId(Long.parseLong(songIdStr));
+        }
+
+        if (communityIdStr != null && !communityIdStr.isBlank()) {
+            postRequest.setCommunityId(Long.parseLong(communityIdStr));
+        }
+
         if (image != null && !image.isEmpty()) {
             String imageUrl = saveImage(image);
             postRequest.setImageUrl(imageUrl);
         }
 
-        PostResponse postResponse = postService.createPost(postRequest, userId);
-        return ResponseEntity.ok(postResponse);
+        return ResponseEntity.ok(postService.createPost(postRequest, userId));
     }
+
 
     private String saveImage(MultipartFile image) {
         try {

@@ -1,6 +1,6 @@
 package com.backendalikin.entity;
 
-import com.backendalikin.model.enums.CommunityRole;
+import com.backendalikin.enums.CommunityRole;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
