@@ -12,5 +12,5 @@ import lombok.NoArgsConstructor;
 public class CommunityBasicResponse {
     private Long id;
     private String name;
-    private String imageUrl;
+    private String coverImageUrl;
 }

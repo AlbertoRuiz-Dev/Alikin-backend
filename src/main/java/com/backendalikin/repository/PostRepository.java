@@ -17,4 +17,8 @@ public interface PostRepository extends JpaRepository<PostEntity, Long> {
     Page<PostEntity> findByUserIn(List<UserEntity> users, Pageable pageable);
     Page<PostEntity> findByOrderByVoteCountDesc(Pageable pageable);
     Page<PostEntity> findByOrderByCreatedAtDesc(Pageable pageable);
+
+    Page<PostEntity> findByCommunityIdOrderByCreatedAtDesc(Long communityId, Pageable pageable);
+
+    Page<PostEntity> findByUserInOrCommunityInOrderByCreatedAtDesc(List<UserEntity> users, List<CommunityEntity> communities, Pageable pageable);
 }

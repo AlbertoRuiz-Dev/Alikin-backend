@@ -13,6 +13,7 @@ import com.backendalikin.repository.CommunityRepository;
 import com.backendalikin.repository.PlaylistRepository;
 import com.backendalikin.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.apache.coyote.BadRequestException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -111,15 +112,58 @@ public class CommunityService {
     }
 
     @Transactional
-    public CommunityResponse updateCommunity(Long id, CommunityRequest communityRequest) {
+    public CommunityResponse updateCommunityWithImage(Long id, CommunityRequest communityRequestData, MultipartFile imageFile) {
         CommunityEntity community = communityRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Comunidad no encontrada para actualizar con ID: " + id));
 
-        communityMapper.updateCommunityFromRequest(communityRequest, community);
+        // Actualizar nombre y descripción desde el DTO
+        if (communityRequestData.getName() != null && !communityRequestData.getName().isEmpty()) {
+            // Considera validar si el nuevo nombre ya existe y no es la misma comunidad
+            if (!community.getName().equalsIgnoreCase(communityRequestData.getName()) &&
+                    communityRepository.existsByName(communityRequestData.getName())) {
+                throw new RuntimeException("Ya existe otra comunidad con el nombre: " + communityRequestData.getName());
+            }
+            community.setName(communityRequestData.getName());
+        }
+        if (communityRequestData.getDescription() != null) {
+            community.setDescription(communityRequestData.getDescription());
+        }
+
+        // Manejar la actualización de la imagen
+        if (imageFile != null && !imageFile.isEmpty()) {
+            String oldImagePath = community.getImageUrl(); // Guardar la ruta de la imagen antigua
+
+            // Guardar la nueva imagen
+            String newImagePath;
+            try {
+                newImagePath = fileStorageService.storeFile(imageFile, "community-images");
+                community.setImageUrl(newImagePath); // Actualizar la URL de la imagen en la entidad
+            } catch (IOException e) {
+                throw new RuntimeException("Error al guardar la nueva imagen de la comunidad: " + e.getMessage(), e);
+            } catch (RuntimeException e) {
+                throw new RuntimeException("Error al procesar el nuevo archivo de imagen: " + e.getMessage(), e);
+            }
+
+            // Si había una imagen antigua y es diferente de la nueva (y no es una URL por defecto), eliminarla
+            if (oldImagePath != null && !oldImagePath.isEmpty() && !oldImagePath.equals(newImagePath)) {
+                // Asegúrate de que fileStorageService.deleteFile no lance una excepción fatal
+                // si el archivo no existe, o manéjalo adecuadamente.
+                try {
+                    fileStorageService.deleteFile(oldImagePath);
+                } catch (Exception e) {
+                    // Loggear la advertencia pero continuar, ya que la nueva imagen se guardó.
+                    System.err.println("Advertencia: No se pudo eliminar la imagen antigua: " + oldImagePath + ". Error: " + e.getMessage());
+                }
+            }
+        }
+        // Si imageFile es null pero se quiere explícitamente quitar la imagen (ej. un checkbox "eliminar imagen actual")
+        // podrías añadir lógica aquí para setear community.setImageUrl(null) y borrar el archivo existente.
+        // Por ahora, si imageFile es null, no se modifica la imagen existente.
 
         CommunityEntity updatedCommunity = communityRepository.save(community);
         return communityMapper.toCommunityResponse(updatedCommunity);
     }
+
 
     @Transactional
     public void deleteCommunity(Long id) {
@@ -257,4 +301,30 @@ public class CommunityService {
                 .map(communityMapper::toCommunityResponse)
                 .collect(Collectors.toList());
     }
+
+    @Transactional
+    public CommunityResponse setCommunityRadioStation(Long communityId, String stationName, String streamUrl, String stationLogoUrl) {
+        CommunityEntity community = communityRepository.findById(communityId)
+                .orElseThrow(() -> new ResourceNotFoundException("Comunidad no encontrada con ID: " + communityId));
+        community.setRadioStationName(stationName);
+        community.setRadioStreamUrl(streamUrl);
+        community.setRadioStationLogoUrl(stationLogoUrl); // puede ser null
+
+        CommunityEntity updatedCommunity = communityRepository.save(community);
+        return communityMapper.toCommunityResponse(updatedCommunity);
+    }
+
+    @Transactional
+    public void kickMember(Long communityId, Long memberToKickId, Long leaderId) {
+        CommunityEntity community = communityRepository.findById(communityId)
+                .orElseThrow(() -> new ResourceNotFoundException("Comunidad no encontrada con ID: " + communityId));
+
+        UserEntity memberToKick = userRepository.findById(memberToKickId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario a expulsar no encontrado con ID: " + memberToKickId));
+        community.getMembers().remove(memberToKick);
+        community.getUserRoles().remove(memberToKick);
+
+        communityRepository.save(community);
+    }
+
 }

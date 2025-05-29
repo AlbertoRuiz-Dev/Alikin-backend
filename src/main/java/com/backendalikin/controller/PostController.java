@@ -53,7 +53,7 @@ class PostController {
     public ResponseEntity<PostResponse> createPost(@Valid @RequestBody PostRequest postRequest, Authentication authentication) {
         String email = ((UserDetails) authentication.getPrincipal()).getUsername();
         Long userId = postService.getUserIdByEmail(email);
-        return ResponseEntity.ok(postService.createPost(postRequest, userId));
+        return ResponseEntity.ok(postService.createGeneralPost(postRequest, userId));
     }
 
     @PostMapping(path = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -89,7 +89,7 @@ class PostController {
             postRequest.setImageUrl(imageUrl);
         }
 
-        return ResponseEntity.ok(postService.createPost(postRequest, userId));
+        return ResponseEntity.ok(postService.createGeneralPost(postRequest, userId));
     }
 
 

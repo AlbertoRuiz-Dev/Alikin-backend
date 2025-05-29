@@ -53,7 +53,12 @@ public class CommunityEntity {
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "radio_playlist_id")
     private PlaylistEntity radioPlaylist;
-    
+
+
+    private String radioStationName;
+    private String radioStreamUrl;
+    private String radioStationLogoUrl;
+
     @ElementCollection
     @CollectionTable(
         name = "community_user_roles",

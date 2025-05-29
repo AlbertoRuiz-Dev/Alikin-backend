@@ -24,4 +24,7 @@ public class CommunityResponse {
     private boolean isMember; // Si el usuario actual es miembro
     private String userRole; // Rol del usuario actual en la comunidad
     private PlaylistBasicResponse radioPlaylist;
+    private String radioStationName;
+    private String radioStreamUrl;
+    private String radioStationLogoUrl;
 }
