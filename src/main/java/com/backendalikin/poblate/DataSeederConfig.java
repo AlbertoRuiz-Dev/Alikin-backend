@@ -64,8 +64,8 @@ public class DataSeederConfig {
             song1.setTitle("Canción Uno");
             song1.setArtist("Artista 1");
             song1.setAlbum("Álbum 1");
-            song1.setUrl("uploads/songs/song1.mp3");
-            song1.setCoverImageUrl("uploads/images/cover1.jpg");
+            song1.setUrl("songs/song1.mp3");
+            song1.setCoverImageUrl("cover1.jpg");
             song1.setDuration(210);
             song1.setUploadedAt(LocalDateTime.now());
             song1.setUploader(rivas);
@@ -75,8 +75,8 @@ public class DataSeederConfig {
             song2.setTitle("Melodía Azul");
             song2.setArtist("Artista 2");
             song2.setAlbum("Álbum Azul");
-            song2.setUrl("uploads/songs/song2.mp3");
-            song2.setCoverImageUrl("uploads/images/cover2.jpg");
+            song2.setUrl("songs/song2.mp3");
+            song2.setCoverImageUrl("cover2.jpg");
             song2.setDuration(180);
             song2.setUploadedAt(LocalDateTime.now());
             song2.setUploader(jose);
@@ -86,8 +86,8 @@ public class DataSeederConfig {
             song3.setTitle("Jazz en el Alma");
             song3.setArtist("Artista 3");
             song3.setAlbum("Jazz Collection");
-            song3.setUrl("uploads/songs/song3.mp3");
-            song3.setCoverImageUrl("uploads/images/cover3.jpg");
+            song3.setUrl("songs/song3.mp3");
+            song3.setCoverImageUrl("cover3.jpg");
             song3.setDuration(240);
             song3.setUploadedAt(LocalDateTime.now());
             song3.setUploader(ango);
@@ -97,8 +97,8 @@ public class DataSeederConfig {
             song4.setTitle("Beat Drop");
             song4.setArtist("DJ X");
             song4.setAlbum("Electro Vibes");
-            song4.setUrl("uploads/songs/song4.mp3");
-            song4.setCoverImageUrl("uploads/images/cover4.jpg");
+            song4.setUrl("songs/song4.mp3");
+            song4.setCoverImageUrl("cover4.jpg");
             song4.setDuration(200);
             song4.setUploadedAt(LocalDateTime.now());
             song4.setUploader(alberto);
@@ -108,8 +108,8 @@ public class DataSeederConfig {
             song5.setTitle("Rock Total");
             song5.setArtist("Band Z");
             song5.setAlbum("Rocking Now");
-            song5.setUrl("uploads/songs/song5.mp3");
-            song5.setCoverImageUrl("uploads/images/cover5.jpg");
+            song5.setUrl("songs/song5.mp3");
+            song5.setCoverImageUrl("cover5.jpg");
             song5.setDuration(230);
             song5.setUploadedAt(LocalDateTime.now());
             song5.setUploader(rivas);

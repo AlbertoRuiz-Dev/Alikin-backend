@@ -25,5 +25,6 @@ public class UserResponse {
     private String role;
     private int followersCount;
     private int followingCount;
-    private boolean isFollowing; // Si el usuario actual sigue a este usuario
+    private boolean isFollowing;
+    private String bio;
 }

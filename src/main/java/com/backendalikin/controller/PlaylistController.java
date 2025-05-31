@@ -15,8 +15,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-
 import jakarta.validation.Valid;
+import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @RestController
@@ -31,10 +31,14 @@ public class PlaylistController {
     @Operation(summary = "Crear playlist")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "Playlist creada correctamente")})
     @PostMapping
-    public ResponseEntity<PlaylistResponse> createPlaylist(@Valid @RequestBody PlaylistRequest playlistRequest, Authentication authentication) {
+    public ResponseEntity<PlaylistResponse> createPlaylist(
+            @RequestPart("playlistData") @Valid PlaylistRequest playlistRequest,
+            @RequestPart(value = "coverImageFile", required = false) MultipartFile coverImageFile,
+            Authentication authentication) {
         String email = ((UserDetails) authentication.getPrincipal()).getUsername();
         Long userId = playlistService.getUserIdByEmail(email);
-        return ResponseEntity.ok(playlistService.createPlaylist(playlistRequest, userId));
+        PlaylistResponse response = playlistService.createPlaylist(playlistRequest, userId, coverImageFile);
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "Obtener playlist por ID")
@@ -48,8 +52,13 @@ public class PlaylistController {
     @ApiResponses({@ApiResponse(responseCode = "200", description = "Playlist actualizada correctamente")})
     @PutMapping("/{id}")
     @PreAuthorize("@securityService.isPlaylistOwner(authentication, #id) or hasRole('ADMIN')")
-    public ResponseEntity<PlaylistResponse> updatePlaylist(@PathVariable Long id, @Valid @RequestBody PlaylistRequest playlistRequest) {
-        return ResponseEntity.ok(playlistService.updatePlaylist(id, playlistRequest));
+    public ResponseEntity<PlaylistResponse> updatePlaylist(
+            @PathVariable Long id,
+            @RequestPart("playlistData") @Valid PlaylistRequest playlistRequest,
+            @RequestPart(value = "coverImageFile", required = false) MultipartFile coverImageFile,
+            Authentication authentication) {
+        PlaylistResponse updatedPlaylist = playlistService.updatePlaylist(id, playlistRequest, coverImageFile);
+        return ResponseEntity.ok(updatedPlaylist);
     }
 
     @Operation(summary = "Eliminar playlist")

@@ -28,6 +28,6 @@ public interface UserMapper {
     @Mapping(target = "role", ignore = true)
     @Mapping(target = "birthDate", ignore = true)
     @Mapping(target = "email", ignore = true)
-    @Mapping(target = "nickname", ignore = true)
+    @Mapping(target = "profilePictureUrl", ignore = true)
     void updateUserFromRequest(UserUpdateRequest request, @MappingTarget UserEntity entity);
 }

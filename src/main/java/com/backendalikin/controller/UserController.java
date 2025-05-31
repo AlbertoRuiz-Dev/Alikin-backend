@@ -6,6 +6,7 @@ import com.backendalikin.dto.response.MessageResponse;
 import com.backendalikin.service.UserService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -19,6 +20,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/users")
@@ -77,6 +79,43 @@ public class UserController {
             @RequestBody UserUpdateRequest updateRequest,
             Authentication authentication) {
         return ResponseEntity.ok(userService.updateUser(id, updateRequest));
+    }
+
+
+    @Operation(summary = "Subir o actualizar foto de perfil", description = "Sube o actualiza la foto de perfil de un usuario")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Foto de perfil actualizada correctamente",
+                    content = @Content(schema = @Schema(implementation = java.util.Map.class))), // Ejemplo: Map.of("profilePictureUrl", url)
+            @ApiResponse(responseCode = "400", description = "Archivo inválido o demasiado grande"),
+            @ApiResponse(responseCode = "403", description = "Prohibido"),
+            @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
+            @ApiResponse(responseCode = "401", description = "No autorizado")
+    })
+    @PutMapping(value = "/{id}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("#id == @userService.getUserIdFromAuthentication(authentication) or hasRole('ADMIN')")
+    public ResponseEntity<?> uploadOrUpdateProfilePicture(
+            @Parameter(description = "ID del usuario") @PathVariable Long id,
+            @Parameter(description = "Archivo de imagen para el avatar (jpeg, png, gif)") @RequestParam("avatarFile") MultipartFile avatarFile,
+            Authentication authentication) {
+        String profilePictureUrl = userService.updateUserAvatar(id, avatarFile);
+        return ResponseEntity.ok(java.util.Map.of("profilePictureUrl", profilePictureUrl));
+    }
+
+    @Operation(summary = "Eliminar foto de perfil", description = "Elimina la foto de perfil de un usuario")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Foto de perfil eliminada y perfil actualizado devuelto",
+                    content = @Content(schema = @Schema(implementation = UserResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Prohibido"),
+            @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
+            @ApiResponse(responseCode = "401", description = "No autorizado")
+    })
+    @DeleteMapping("/{id}/avatar")
+    @PreAuthorize("#id == @userService.getUserIdFromAuthentication(authentication) or hasRole('ADMIN')")
+    public ResponseEntity<UserResponse> removeProfilePicture(
+            @Parameter(description = "ID del usuario") @PathVariable Long id,
+            Authentication authentication) {
+        UserResponse updatedUser = userService.removeUserAvatar(id);
+        return ResponseEntity.ok(updatedUser);
     }
 
     @Operation(summary = "Eliminar usuario", description = "Elimina una cuenta de usuario")

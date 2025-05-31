@@ -36,7 +36,8 @@ public class UserEntity {
     private String phoneNumber;
     private LocalDate birthDate;
     private boolean emailVerified;
-    
+    private String bio;
+
     @Enumerated(EnumType.STRING)
     private Role role;
     
@@ -50,7 +51,8 @@ public class UserEntity {
         inverseJoinColumns = @JoinColumn(name = "followed_id")
     )
     private Set<UserEntity> following = new HashSet<>();
-    
+
+
     @ManyToMany(mappedBy = "following")
     private Set<UserEntity> followers = new HashSet<>();
     

@@ -5,85 +5,172 @@ import com.backendalikin.dto.response.PlaylistResponse;
 import com.backendalikin.entity.PlaylistEntity;
 import com.backendalikin.entity.SongEntity;
 import com.backendalikin.entity.UserEntity;
+import com.backendalikin.exception.FileUploadException;
+import com.backendalikin.service.ResourceNotFoundException;
 import com.backendalikin.mapper.PlaylistMapper;
 import com.backendalikin.repository.PlaylistRepository;
 import com.backendalikin.repository.SongRepository;
 import com.backendalikin.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class PlaylistService {
 
     private final PlaylistRepository playlistRepository;
     private final UserRepository userRepository;
     private final SongRepository songRepository;
     private final PlaylistMapper playlistMapper;
+    private final Path fileStorageLocationAbs;
+    private final String publicUrlPathSegment;
+
+    public PlaylistService(PlaylistRepository playlistRepository,
+                           UserRepository userRepository,
+                           SongRepository songRepository,
+                           PlaylistMapper playlistMapper,
+                           @Value("${app.upload.dir.playlist-covers}") String uploadDirAbsPath,
+                           @Value("${app.file.storage.base-url-segment.playlist-covers}") String publicUrlSegment) {
+        this.playlistRepository = playlistRepository;
+        this.userRepository = userRepository;
+        this.songRepository = songRepository;
+        this.playlistMapper = playlistMapper;
+        this.publicUrlPathSegment = publicUrlSegment;
+        this.fileStorageLocationAbs = Paths.get(uploadDirAbsPath).toAbsolutePath().normalize();
+
+        try {
+            Files.createDirectories(this.fileStorageLocationAbs);
+        } catch (Exception ex) {
+            throw new FileUploadException("No se pudo crear el directorio para almacenar las portadas de playlist: " + this.fileStorageLocationAbs.toString(), ex);
+        }
+    }
 
     @Transactional
-    public PlaylistResponse createPlaylist(PlaylistRequest playlistRequest, Long userId) {
+    public PlaylistResponse createPlaylist(PlaylistRequest playlistRequest, Long userId, MultipartFile coverImageFile) {
         UserEntity owner = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + userId));
 
         PlaylistEntity playlist = playlistMapper.toEntity(playlistRequest);
         playlist.setOwner(owner);
         playlist.setCreatedAt(LocalDateTime.now());
 
-        // Inicializar lista de canciones
-        playlist.setSongs(new ArrayList<>());
+        if (coverImageFile != null && !coverImageFile.isEmpty()) {
+            String fileName = storeFile(coverImageFile);
+            String coverImageUrl = Paths.get(this.publicUrlPathSegment, fileName).toString().replace("\\", "/");
+            playlist.setCoverImageUrl(coverImageUrl);
+        } else if (playlistRequest.getCoverImageUrl() != null && !playlistRequest.getCoverImageUrl().trim().isEmpty()){
+            playlist.setCoverImageUrl(playlistRequest.getCoverImageUrl());
+        }
 
-        // Agregar canciones si se proporcionan IDs
+        playlist.setSongs(new ArrayList<>());
         if (playlistRequest.getSongIds() != null && !playlistRequest.getSongIds().isEmpty()) {
-            for (Long songId : playlistRequest.getSongIds()) {
-                SongEntity song = songRepository.findById(songId)
-                        .orElseThrow(() -> new RuntimeException("Canción no encontrada con ID: " + songId));
-                playlist.getSongs().add(song);
-            }
+            List<SongEntity> songs = songRepository.findAllById(playlistRequest.getSongIds());
+            playlist.setSongs(new ArrayList<>(songs));
         }
 
         PlaylistEntity savedPlaylist = playlistRepository.save(playlist);
-        return playlistMapper.toPlaylistResponse(savedPlaylist);
+        PlaylistEntity entityForResponse = playlistRepository.findByIdWithOwnerAndSongs(savedPlaylist.getId())
+                .orElse(savedPlaylist);
+        return playlistMapper.toPlaylistResponse(entityForResponse);
     }
 
     @Transactional(readOnly = true)
     public PlaylistResponse getPlaylistById(Long id) {
-        PlaylistEntity playlist = playlistRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Playlist no encontrada"));
+        PlaylistEntity playlist = playlistRepository.findByIdWithOwnerAndSongs(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Playlist no encontrada con ID: " + id));
         return playlistMapper.toPlaylistResponse(playlist);
     }
 
     @Transactional
-    public PlaylistResponse updatePlaylist(Long id, PlaylistRequest playlistRequest) {
-        PlaylistEntity playlist = playlistRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Playlist no encontrada"));
+    public PlaylistResponse updatePlaylist(Long playlistId, PlaylistRequest playlistRequest, MultipartFile coverImageFile) {
+        PlaylistEntity playlist = playlistRepository.findByIdWithOwnerAndSongs(playlistId)
+                .orElseThrow(() -> new ResourceNotFoundException("Playlist no encontrada con ID: " + playlistId));
 
         playlistMapper.updatePlaylistFromRequest(playlistRequest, playlist);
 
-        // Actualizar canciones si se proporcionan
+        if (coverImageFile != null && !coverImageFile.isEmpty()) {
+            String fileName = storeFile(coverImageFile);
+            String coverImageUrl = Paths.get(this.publicUrlPathSegment, fileName).toString().replace("\\", "/");
+            playlist.setCoverImageUrl(coverImageUrl);
+        } else if (playlistRequest.getCoverImageUrl() != null && playlistRequest.getCoverImageUrl().isEmpty()){
+            playlist.setCoverImageUrl(null);
+        }
+
         if (playlistRequest.getSongIds() != null) {
             playlist.getSongs().clear();
-            for (Long songId : playlistRequest.getSongIds()) {
-                SongEntity song = songRepository.findById(songId)
-                        .orElseThrow(() -> new RuntimeException("Canción no encontrada con ID: " + songId));
-                playlist.getSongs().add(song);
-            }
+            List<SongEntity> songs = songRepository.findAllById(playlistRequest.getSongIds());
+            playlist.setSongs(new ArrayList<>(songs));
         }
 
         PlaylistEntity updatedPlaylist = playlistRepository.save(playlist);
-        return playlistMapper.toPlaylistResponse(updatedPlaylist);
+        PlaylistEntity entityForResponse = playlistRepository.findByIdWithOwnerAndSongs(updatedPlaylist.getId())
+                .orElse(updatedPlaylist);
+        return playlistMapper.toPlaylistResponse(entityForResponse);
+    }
+
+    private String storeFile(MultipartFile file) {
+        String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
+        String fileExtension = "";
+        try {
+            if (originalFileName == null || originalFileName.lastIndexOf(".") < 0) {
+                throw new FileUploadException("El archivo no tiene una extensión válida.");
+            }
+            fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
+            if (!List.of(".png", ".jpg", ".jpeg", ".gif").contains(fileExtension.toLowerCase())) {
+                throw new FileUploadException("Extensión de archivo no permitida: " + fileExtension);
+            }
+        } catch (StringIndexOutOfBoundsException e) {
+            throw new FileUploadException("Nombre de archivo original inválido: " + originalFileName, e);
+        }
+
+        String uniqueFileName = UUID.randomUUID().toString() + fileExtension;
+
+        try {
+            if (file.isEmpty()) {
+                throw new FileUploadException("No se puede almacenar un archivo vacío: " + originalFileName);
+            }
+            if (uniqueFileName.contains("..")) {
+                throw new FileUploadException("Secuencia inválida en nombre de archivo: " + uniqueFileName);
+            }
+
+            Path targetLocation = this.fileStorageLocationAbs.resolve(uniqueFileName);
+            try (InputStream inputStream = file.getInputStream()) {
+                Files.copy(inputStream, targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            }
+            return uniqueFileName;
+        } catch (IOException ex) {
+            throw new FileUploadException("No se pudo almacenar el archivo " + originalFileName, ex);
+        }
     }
 
     @Transactional
     public void deletePlaylist(Long id) {
-        if (!playlistRepository.existsById(id)) {
-            throw new RuntimeException("Playlist no encontrada");
+        PlaylistEntity playlist = playlistRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Playlist no encontrada con ID: " + id));
+
+        if (playlist.getCoverImageUrl() != null && !playlist.getCoverImageUrl().isEmpty()) {
+            try {
+                String fileName = Paths.get(playlist.getCoverImageUrl()).getFileName().toString();
+                Path filePath = this.fileStorageLocationAbs.resolve(fileName);
+                Files.deleteIfExists(filePath);
+            } catch (IOException e) {
+                System.err.println("Error al eliminar archivo de portada: " + playlist.getCoverImageUrl() + " - " + e.getMessage());
+            }
         }
         playlistRepository.deleteById(id);
     }
@@ -91,40 +178,31 @@ public class PlaylistService {
     @Transactional
     public void addSongToPlaylist(Long playlistId, Long songId) {
         PlaylistEntity playlist = playlistRepository.findById(playlistId)
-                .orElseThrow(() -> new RuntimeException("Playlist no encontrada"));
-
+                .orElseThrow(() -> new ResourceNotFoundException("Playlist no encontrada con ID: " + playlistId));
         SongEntity song = songRepository.findById(songId)
-                .orElseThrow(() -> new RuntimeException("Canción no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Canción no encontrada con ID: " + songId));
 
-        if (playlist.getSongs().contains(song)) {
+        if (playlist.getSongs().stream().anyMatch(s -> s.getId().equals(songId))) {
             throw new RuntimeException("La canción ya está en la playlist");
         }
-
         playlist.getSongs().add(song);
-        playlistRepository.save(playlist);
     }
 
     @Transactional
     public void removeSongFromPlaylist(Long playlistId, Long songId) {
         PlaylistEntity playlist = playlistRepository.findById(playlistId)
-                .orElseThrow(() -> new RuntimeException("Playlist no encontrada"));
-
-        SongEntity song = songRepository.findById(songId)
-                .orElseThrow(() -> new RuntimeException("Canción no encontrada"));
-
-        if (!playlist.getSongs().contains(song)) {
-            throw new RuntimeException("La canción no está en la playlist");
-        }
-
-        playlist.getSongs().remove(song);
-        playlistRepository.save(playlist);
+                .orElseThrow(() -> new ResourceNotFoundException("Playlist no encontrada con ID: " + playlistId));
+        SongEntity songToRemove = playlist.getSongs().stream()
+                .filter(s -> s.getId().equals(songId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("La canción no está en la playlist"));
+        playlist.getSongs().remove(songToRemove);
     }
 
     @Transactional(readOnly = true)
     public List<PlaylistResponse> getPlaylistsByOwner(Long ownerId) {
         UserEntity owner = userRepository.findById(ownerId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + ownerId));
         List<PlaylistEntity> playlists = playlistRepository.findByOwner(owner);
         return playlists.stream()
                 .map(playlistMapper::toPlaylistResponse)
@@ -134,8 +212,7 @@ public class PlaylistService {
     @Transactional(readOnly = true)
     public List<PlaylistResponse> getPublicPlaylistsByOwner(Long ownerId) {
         UserEntity owner = userRepository.findById(ownerId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + ownerId));
         List<PlaylistEntity> playlists = playlistRepository.findByOwnerAndIsPublicTrue(owner);
         return playlists.stream()
                 .map(playlistMapper::toPlaylistResponse)
@@ -153,7 +230,7 @@ public class PlaylistService {
     @Transactional(readOnly = true)
     public Long getUserIdByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con email: " + email))
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con email: " + email))
                 .getId();
     }
 }

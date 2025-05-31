@@ -11,4 +11,6 @@ public class UserUpdateRequest {
     private String lastName;
     private String profilePictureUrl;
     private String phoneNumber;
+    private String bio;
+    private String nickname;
 }
