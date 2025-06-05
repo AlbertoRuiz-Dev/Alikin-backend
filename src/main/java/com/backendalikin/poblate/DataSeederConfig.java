@@ -252,7 +252,7 @@ public class DataSeederConfig {
             fos.close();
             rbc.close();
 
-            return "/uploads/" + filename;
+            return filename;
         } catch (Exception e) {
             System.err.println("Error downloading image for keyword " + keyword + ": " + e.getMessage());
             return "/uploads/images/default.jpg";

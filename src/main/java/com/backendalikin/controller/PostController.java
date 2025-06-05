@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -198,4 +199,21 @@ class PostController {
         postService.setUserVoteStatusForPage(feed, userId);
         return ResponseEntity.ok(feed);
     }
+
+    @Operation(summary = "Obtener feed global de posts sin comunidad", description = "Obtiene posts de todos los usuarios que no pertenecen a ninguna comunidad.")
+    @GetMapping("/feed/global")
+    public ResponseEntity<Page<PostResponse>> getGlobalFeedWithoutCommunity(
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            Authentication authentication) {
+
+        Long userId = null;
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
+            String email = ((UserDetails) authentication.getPrincipal()).getUsername();
+            userId = postService.getUserIdByEmail(email);
+        }
+
+        Page<PostResponse> feed = postService.getGlobalPostsWithoutCommunity(pageable, userId);
+        return ResponseEntity.ok(feed);
+    }
+
 }

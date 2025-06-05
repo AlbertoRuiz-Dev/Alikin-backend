@@ -364,4 +364,18 @@ public class PostService {
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con email: " + email))
                 .getId();
     }
+
+    @Transactional(readOnly = true)
+    public Page<PostResponse> getGlobalPostsWithoutCommunity(Pageable pageable, Long currentUserId) {
+        Page<PostEntity> postEntities = postRepository.findGlobalPostsWithoutCommunity(pageable);
+        // Mapea PostEntity a PostResponse. Asumo que tienes un mapper.
+        // Si tu PostResponse necesita información del owner, asegúrate que se cargue (JOIN FETCH en el repo o acceso en transacción)
+        Page<PostResponse> postResponses = postEntities.map(postMapper::toPostResponse); // Asumiendo un postMapper
+
+        // Opcional pero recomendado: establece el estado de voto del usuario actual para estos posts
+        if (currentUserId != null) {
+            setUserVoteStatusForPage(postResponses, currentUserId);
+        }
+        return postResponses;
+    }
 }
